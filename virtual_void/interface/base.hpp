@@ -4,7 +4,6 @@
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
-
 #include <virtual_void/virtual_void.hpp>
 
 #undef interface
@@ -47,13 +46,19 @@ class base {
     requires(!std::derived_from<std::remove_cvref_t<CONSTRUCTED_WITH>,
                                 base<VIRTUAL_VOID>> &&
              !is_virtual_void<std::remove_cvref_t<CONSTRUCTED_WITH>> &&
-             !is_virtual_typed<std::remove_cvref_t<CONSTRUCTED_WITH>>)
+             !is_virtual_void<std::remove_cvref_t<CONSTRUCTED_WITH>> 
+             //&&(!std::is_const_v<std::remove_reference_t<CONSTRUCTED_WITH>> ||
+             // is_const_void_<void_t>::value)
+                                    )
       : virtual_void_(erased<virtual_void_t>(
             std::forward<CONSTRUCTED_WITH>(constructed_with))) {
     static v_table_t imlpemented_v_table{
         unerase<VIRTUAL_VOID, CONSTRUCTED_WITH>()};
     v_table_ = &imlpemented_v_table;
     static_assert(!is_virtual_typed<CONSTRUCTED_WITH>);
+    //static_assert
+    //         (!std::is_const_v<std::remove_reference_t<CONSTRUCTED_WITH>> ||
+    //          is_const_void_<void_t>::value);
   }
   template <typename CONSTRUCTED_WITH>
   base(const virtual_typed<CONSTRUCTED_WITH, virtual_void_t>& vt) : base(*vt) {}
@@ -90,7 +95,7 @@ class base {
     return std::move(interface.virtual_void_);
   }
   friend inline auto get_interface_data(base<VIRTUAL_VOID> const& interface) {
-    return  get_data(get_virtual_void(interface));
+    return get_data(get_virtual_void(interface));
   }
   friend inline auto& get_v_table(base<VIRTUAL_VOID> const& interface) {
     return interface.v_table_;
@@ -102,9 +107,8 @@ class base {
   void operator()() const {}
   void* operator[](void*) const {}
   explicit operator bool() const {
-     return get_data(get_virtual_void(*this)) != nullptr;
+    return get_data(get_virtual_void(*this)) != nullptr;
   }
-
 };
 
 template <is_virtual_void VV>
