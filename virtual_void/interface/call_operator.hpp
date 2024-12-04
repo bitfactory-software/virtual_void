@@ -24,7 +24,7 @@ struct call_operator_<VIRTUAL_VOID, BASE, CONST_SPECIFIER, RET(ARGS...)>
   using operator_t = operator_<call_operator_target, VIRTUAL_VOID, BASE,
                                CONST_SPECIFIER, RET(ARGS...)>;
   using operator_t::operator_t;
-  using operator_t::operator=;
+  //using operator_t::operator=;
   //call_operator_& operator=(call_operator_ const& rhs)
   //  requires std::is_assignable_v<VIRTUAL_VOID, VIRTUAL_VOID>
   //{

@@ -4,6 +4,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <utility>
+#include <virtual_void/data/has_no_meta/observer.hpp>
 #include <virtual_void/virtual_void.hpp>
 
 #undef interface
@@ -25,6 +26,18 @@ struct v_table_base {
 };
 
 template <is_virtual_void VIRTUAL_VOID>
+class base;
+
+template <typename CONSTRUCTED_WITH, typename VIRTUAL_VOID>
+concept constructibile_for =
+    !std::derived_from<std::remove_cvref_t<CONSTRUCTED_WITH>,
+                      base<VIRTUAL_VOID>> &&
+    !is_virtual_void<std::remove_cvref_t<CONSTRUCTED_WITH>> &&
+    !is_virtual_typed<std::remove_cvref_t<CONSTRUCTED_WITH>> &&
+    (!std::is_const_v<std::remove_reference_t<CONSTRUCTED_WITH>> ||
+     virtual_void_trait<VIRTUAL_VOID>::is_constructibile_from_const);
+
+template <is_virtual_void VIRTUAL_VOID>
 class base {
  public:
   using virtual_void_t = VIRTUAL_VOID;
@@ -33,6 +46,7 @@ class base {
   template <typename>
   using is_already_base =
       std::false_type;  // base is always at the bottom of the v_table chain.
+
  protected:
   virtual_void_t virtual_void_ = {};
   v_table_t* v_table_ = nullptr;
@@ -43,22 +57,17 @@ class base {
       : virtual_void_(std::move(virtual_void)), v_table_(v_table) {}
   template <typename CONSTRUCTED_WITH>
   base(CONSTRUCTED_WITH&& constructed_with)
-    requires(!std::derived_from<std::remove_cvref_t<CONSTRUCTED_WITH>,
-                                base<VIRTUAL_VOID>> &&
-             !is_virtual_void<std::remove_cvref_t<CONSTRUCTED_WITH>> &&
-             !is_virtual_void<std::remove_cvref_t<CONSTRUCTED_WITH>> 
-             //&&(!std::is_const_v<std::remove_reference_t<CONSTRUCTED_WITH>> ||
-             // is_const_void_<void_t>::value)
-                                    )
+    requires constructibile_for<CONSTRUCTED_WITH, VIRTUAL_VOID>
       : virtual_void_(erased<virtual_void_t>(
             std::forward<CONSTRUCTED_WITH>(constructed_with))) {
     static v_table_t imlpemented_v_table{
         unerase<VIRTUAL_VOID, CONSTRUCTED_WITH>()};
     v_table_ = &imlpemented_v_table;
-    static_assert(!is_virtual_typed<CONSTRUCTED_WITH>);
-    //static_assert
-    //         (!std::is_const_v<std::remove_reference_t<CONSTRUCTED_WITH>> ||
-    //          is_const_void_<void_t>::value);
+    if constexpr (std::same_as<virtual_void_t,
+                               data::has_no_meta::mutable_observer>) {
+      using t = std::remove_reference_t<CONSTRUCTED_WITH>;
+      static_assert(!std::is_const_v<t>);
+    }
   }
   template <typename CONSTRUCTED_WITH>
   base(const virtual_typed<CONSTRUCTED_WITH, virtual_void_t>& vt) : base(*vt) {}
